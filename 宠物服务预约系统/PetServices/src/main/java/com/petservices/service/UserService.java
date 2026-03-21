@@ -1,0 +1,216 @@
+package com.petservices.service;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.petservices.config.AppConsts;
+import com.petservices.entity.Booking;
+import com.petservices.entity.LoginInfo;
+import com.petservices.entity.Order;
+import com.petservices.entity.User;
+import com.petservices.mapper.*;
+import com.petservices.utils.UserFriendlyException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+/**
+ * <p>
+ * 服务类
+ * </p>
+ *
+ * @author ${author}
+ * @since 2025-02-23
+ */
+@Service
+@RequiredArgsConstructor
+public class UserService {
+
+    final UserMapper userMapper;
+    final LoginInfoMapper loginInfoMapper;
+    final OrderMapper orderMapper;
+    final ServeMapper serveMapper;
+    final BookingMapper bookingMapper;
+
+    public User login(String username, String password) {
+        User user = userMapper.selectOne(new LambdaQueryWrapper<User>()
+                .eq(User::getUsername, username)
+                .eq(User::getPassword, password));
+        UserFriendlyException.throwException(user == null, "用户名或密码错误!");
+        //存放登录信息
+        LoginInfo loginInfo = new LoginInfo();
+        loginInfo.setLoginTime(new Date());
+        loginInfo.setLoginUsername(user.getUsername());
+        loginInfo.setLoginName(user.getName());
+        loginInfo.setPhone(user.getPhone());
+        loginInfo.setRole(1);
+        loginInfoMapper.insert(loginInfo);
+        return user;
+    }
+
+    public Page<User> getUserList(Integer currentPage, Integer pageSize) {
+        Page<User> userPage = new Page<>(currentPage, pageSize);
+        return userMapper.selectPage(userPage, null);
+    }
+
+
+    public void updateUser(User user) {
+        userMapper.updateById(user);
+    }
+
+    public boolean ruleStr(String str) {
+        return str.length() < 4;
+    }
+
+    public Page<User> addUser(User user) {
+        //验证用户名密码
+        UserFriendlyException.throwException(ruleStr(user.getUsername()), "用户名长度不能小于4!");
+        //设置初始密码
+        user.setPassword("123456");
+        User u = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getUsername, user.getUsername()));
+        UserFriendlyException.throwException(u != null, "此用户名已被注册，请重新输入!");
+        userMapper.insert(user);
+        Page<User> userPage = new Page<>(1, 5);
+        return userMapper.selectPage(userPage, null);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Page<User> deleteUser(Integer userId) {
+        //查看是否有预约信息或者订单信息
+        List<Booking> bookings = bookingMapper.selectList(new LambdaQueryWrapper<Booking>().eq(Booking::getUserId, userId));
+        UserFriendlyException.throwException(bookings.size() > 0, "请先删除用户的预约信息!");
+        List<Order> orders = orderMapper.selectList(new LambdaQueryWrapper<Order>().eq(Order::getUserId, userId));
+        UserFriendlyException.throwException(orders.size() > 0, "请先删除用户的订单信息!");
+        //删除用户
+        userMapper.deleteById(userId);
+        Page<User> userPage = new Page<>(1, 5);
+        return userMapper.selectPage(userPage, null);
+    }
+
+    public List<User> searchUser(String name, String phone) {
+        QueryWrapper<User> w = new QueryWrapper<>();
+        if (StringUtils.isNotBlank(name)) {
+            w.like("name", name);
+        }
+        if (StringUtils.isNotBlank(phone)) {
+            w.eq("phone", phone);
+        }
+        return userMapper.selectList(w);
+    }
+
+    public Page<User> resetPassword(Integer userId) {
+        User user = userMapper.selectById(userId);
+        user.setPassword("123456");
+        userMapper.updateById(user);
+        Page<User> userPage = new Page<>(1, 5);
+        return userMapper.selectPage(userPage, null);
+    }
+
+    public String uploadAvatar(MultipartFile file) {
+        File fileDir = new File(AppConsts.IMAGE_PATH);
+        if (!fileDir.exists()) {
+            //如果没有目录应该创建目录
+            fileDir.mkdirs();
+        }
+        //获取图片后缀
+        String fileSuffix = Objects.requireNonNull(file.getOriginalFilename()).substring(file.getOriginalFilename().lastIndexOf("."));
+        //生成随机的文件名称 防止重复
+        String uuid = UUID.randomUUID().toString().replace("-", "");
+        //生成文件保存位置名称
+        String path = AppConsts.IMAGE_PATH + uuid + fileSuffix;
+        //文件实现上传
+        try {
+            file.transferTo(new File(path));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        //返回文件访问地址
+        return AppConsts.ACCESS_IMAGE_PATH + uuid + fileSuffix;
+    }
+
+    public String updateMyAvatar(MultipartFile file, Integer userId) {
+        String avatar = uploadAvatar(file);
+        User user = userMapper.selectById(userId);
+        user.setAvatar(avatar);
+        userMapper.updateById(user);
+        return avatar;
+    }
+
+    public void updateMyInfo(User user) {
+        userMapper.updateById(user);
+    }
+
+    public void register(User user) {
+        UserFriendlyException.throwException(user == null, "注册信息不能为空!");
+        user.setUsername(user.getUsername() == null ? null : user.getUsername().trim());
+        user.setName(user.getName() == null ? null : user.getName().trim());
+        user.setPhone(user.getPhone() == null ? null : user.getPhone().trim());
+        user.setAddress(user.getAddress() == null ? null : user.getAddress().trim());
+
+        UserFriendlyException.throwException(StringUtils.isBlank(user.getUsername()), "用户名不能为空!");
+        UserFriendlyException.throwException(StringUtils.isBlank(user.getName()), "姓名不能为空!");
+        UserFriendlyException.throwException(StringUtils.isBlank(user.getPhone()), "电话不能为空!");
+        UserFriendlyException.throwException(StringUtils.isBlank(user.getAddress()), "地址不能为空!");
+        UserFriendlyException.throwException(user.getSex() == null, "性别不能为空!");
+
+        // 注册页暂未填写年龄时，给一个默认值，避免数据库非空约束报错
+        if (user.getAge() == null) {
+            user.setAge(18);
+        }
+
+        //验证用户名密码
+        UserFriendlyException.throwException(ruleStr(user.getUsername()), "用户名长度不能小于4!");
+
+        User u = userMapper.selectOne(new LambdaQueryWrapper<User>()
+                .eq(User::getUsername, user.getUsername()));
+        UserFriendlyException.throwException(u != null, "此用户名已被注册，请重新输入!");
+
+        //设置初始密码（保留用户输入密码，不覆盖）
+        UserFriendlyException.throwException(StringUtils.isBlank(user.getPassword()), "密码不能为空!");
+
+        //设置初始头像（用户未上传时）
+        if (StringUtils.isBlank(user.getAvatar())) {
+            user.setAvatar("http://localhost:8686/image/user.jpg");
+        }
+
+        // 一些数据库使用 tinyint(1) + 非空约束，注册时默认置 0 更稳妥
+        if (user.getHealthReminderSubscribed() == null) {
+            user.setHealthReminderSubscribed(0);
+        }
+
+        userMapper.insert(user);
+    }
+
+    public Integer getHealthReminderSubscribed(Integer userId) {
+        User user = userMapper.selectById(userId);
+        if (user == null || user.getHealthReminderSubscribed() == null) {
+            return 0;
+        }
+        return user.getHealthReminderSubscribed();
+    }
+
+    public Integer updateHealthReminderSubscribed(Integer userId, Integer subscribed) {
+        User user = userMapper.selectById(userId);
+        UserFriendlyException.throwException(user == null, "用户不存在");
+        user.setHealthReminderSubscribed((subscribed != null && subscribed == 1) ? 1 : 0);
+        userMapper.updateById(user);
+        return user.getHealthReminderSubscribed();
+    }
+
+    public List<Integer> getSubscribedUserIds() {
+        List<User> users = userMapper.selectList(new LambdaQueryWrapper<User>()
+                .eq(User::getHealthReminderSubscribed, 1));
+        return users.stream().map(User::getUserId).collect(Collectors.toList());
+    }
+
+}

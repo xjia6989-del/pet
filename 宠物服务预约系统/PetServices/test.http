@@ -1,0 +1,14 @@
+### 用户登录
+GET http://localhost:9999/user/login/user/user
+
+### 添加预约
+POST http://localhost:9999/booking/addBooking
+
+Content-Type: application/json
+
+{
+    "serve": 1,
+    "petId": 1,
+    "bookingDate": "2025-03-20"
+}
+
