@@ -60,21 +60,21 @@
                 </label>
             </div>
 
-            <div class="radio-button-container">
+            <div class="radio-button-container role-group">
                 <div class="radio-button">
-                    <input type="radio" class="radio-button__input" id="radio1" name="radio-group" :value="1"
-                        v-model="registerForm.sex">
-                    <label class="radio-button__label" for="radio1">
+                    <input type="radio" class="radio-button__input" id="roleUser" name="role-group" value="user"
+                        v-model="registerForm.role">
+                    <label class="radio-button__label" for="roleUser">
                         <span class="radio-button__custom"></span>
-                        男
+                        用户
                     </label>
                 </div>
                 <div class="radio-button">
-                    <input type="radio" class="radio-button__input" id="radio2" name="radio-group" :value="2"
-                        v-model="registerForm.sex">
-                    <label class="radio-button__label" for="radio2">
+                    <input type="radio" class="radio-button__input" id="roleVet" name="role-group" value="vet"
+                        v-model="registerForm.role">
+                    <label class="radio-button__label" for="roleVet">
                         <span class="radio-button__custom"></span>
-                        女
+                        兽医
                     </label>
                 </div>
             </div>
@@ -102,7 +102,8 @@ export default {
                 sex: null,
                 avatar: '',
                 age: null,
-                address: ''
+                address: '',
+                role: 'user'
             }
         };
     },
@@ -154,8 +155,8 @@ export default {
                     this.$message.error("地址不能为空!");
                     return;
                 }
-                if (a.sex !== 1 && a.sex !== 2) {
-                    this.$message.error("请选择性别!");
+                if (a.role !== 'user' && a.role !== 'vet') {
+                    this.$message.error("请选择注册角色!");
                     return;
                 }
 
@@ -164,10 +165,11 @@ export default {
                     password: String(a.password || ''),
                     name: String(a.name || '').trim(),
                     phone: String(a.phone || '').trim(),
-                    sex: Number(a.sex),
+                    sex: 1,
                     address: String(a.address || '').trim(),
                     age: a.age === '' || a.age == null ? null : Number(a.age),
-                    avatar: a.avatar || ''
+                    avatar: a.avatar || '',
+                    role: a.role
                 };
 
                 const resp = await register(payload);

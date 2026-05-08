@@ -2,8 +2,8 @@
   <div class="store-page">
     <div class="page-hero">
       <div>
-        <h2>预约服务</h2>
-        <p>选择适合毛孩子的服务项目，并快速完成预约</p>
+        <h2>健康护理预约</h2>
+        <p>选择适合毛孩子的健康护理项目，并快速完成预约</p>
       </div>
     </div>
 
@@ -57,9 +57,16 @@
         </el-form-item>
         <el-form-item label="时间段" :label-width="formLabelWidth">
           <el-select v-model="bookingForm.timeSlot" placeholder="请选择时间段" style="width: 220px;">
-            <el-option v-for="slot in availableSlots" :key="slot" :label="slot" :value="slot"></el-option>
+            <el-option
+              v-for="slot in allSlots"
+              :key="slot"
+              :label="slot"
+              :value="slot">
+            </el-option>
           </el-select>
+          <div style="margin-top:6px;color:#909399;font-size:12px;">系统将自动校验容量，默认每个时间段至少可预约 1 个名额。</div>
         </el-form-item>
+
       </el-form>
       <div slot="footer" class="dialog-footer">
         <el-button @click="dialogFormVisible = false">取消</el-button>
@@ -93,6 +100,7 @@ export default {
         petId: null
       },
       availableSlots: [],
+      allSlots: ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'],
       dialogFormVisible: false,
       formLabelWidth: '120px',
       pickerOptions: {
@@ -129,17 +137,19 @@ export default {
         return;
       }
 
-      const bookingDate = `${this.bookingForm.bookingDay} ${this.bookingForm.timeSlot}`;
+      const bookingDate = `${this.bookingForm.bookingDay} ${this.bookingForm.timeSlot}:00`;
       const payload = { ...this.bookingForm, bookingDate };
 
       const res = await addBooking(payload);
-      if (res) {
-        this.dialogFormVisible = false;
+      if (res && res.bookingId) {
         this.$message.success('预约成功!');
+        this.bookingForm.timeSlot = '';
+        this.availableSlots = [...this.allSlots];
+        this.dialogFormVisible = false;
         this.$router.push('/userHome/myBooking');
       } else {
-        this.$message.error('该时间段已被预约，请重新选择');
-        this.loadAvailableSlots();
+        this.$message.error('该时间段已被预约满，请重新选择');
+        await this.loadAvailableSlots();
       }
     },
     booking(serveId) {

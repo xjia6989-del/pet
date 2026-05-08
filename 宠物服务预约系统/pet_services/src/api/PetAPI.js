@@ -48,3 +48,20 @@ export const getAllPetsForAdmin = () => {
         method: 'get'
     }).then(res => res.data.result);
 };
+
+export const recognizePetVision = (formData) => {
+    return request({
+        url: '/pet/vision/recognize',
+        method: 'post',
+        data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' }
+    }).then(res => res.data.result);
+};
+
+export const deletePetByAdmin = (petId, adminId) => {
+    return request({
+        url: `/pet/admin/delete/${petId}`,
+        method: 'delete',
+        params: { adminId }
+    }).then(res => res.data.result);
+};

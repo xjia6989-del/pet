@@ -17,12 +17,13 @@ public class PetServicesApplication {
         SpringApplication.run(PetServicesApplication.class, args);
     }
 
-    // 添加 CORS 配置，允许前端携带凭证
+    // CORS 配置：兼容本地开发端口变化（8080/8081/...）
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowCredentials(true);                     // 允许携带 Cookie
-        config.addAllowedOrigin("http://localhost:8080");     // 只允许前端地址
+        config.setAllowCredentials(true); // 允许携带 Cookie
+        config.addAllowedOriginPattern("http://localhost:*");
+        config.addAllowedOriginPattern("http://127.0.0.1:*");
         config.addAllowedHeader("*");
         config.addAllowedMethod("*");
 

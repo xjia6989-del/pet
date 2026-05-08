@@ -54,6 +54,11 @@ public class Booking implements Serializable {
     private Integer serve;
 
     /**
+     * 分配的兽医ID
+     */
+    private Integer vetId;
+
+    /**
      * 评价内容
      */
     private String appraise;

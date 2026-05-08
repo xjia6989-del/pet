@@ -11,8 +11,11 @@ import Category from '@/components/admin/Category.vue'
 import Serve from '@/components/admin/Serve.vue'
 import Goods from '@/components/admin/Goods.vue'
 import Booking from '@/components/admin/Booking.vue'
-import Order from '@/components/admin/Order.vue'
 import ContactMessage from '@/components/admin/ContactMessage.vue'
+import VetHome from '@/views/VetHome.vue'
+import VetBooking from '@/components/vet/BookingList.vue'
+import VetHealthRecord from '@/components/vet/HealthRecord.vue'
+import VetCenter from '@/views/VetCenter.vue'
 import Square from '@/components/user/Square.vue'
 import PetServices from '@/components/user/PetServices.vue'
 import PetGoods from '@/components/user/PetGoods.vue'
@@ -26,12 +29,12 @@ Vue.use(VueRouter)
 const routes = [
   {
     path: '/',
-    name: '默认登录页',
+    name: '宠物健康护理预约与智能档案管理系统',
     component: Login
   },
   {
     path: '/login',
-    name: '登录页',
+    name: '宠物健康护理预约与智能档案管理系统',
     component: Login
   },
   {
@@ -48,7 +51,7 @@ const routes = [
      {
        path: 'square',
        component: Square,
-       meta: { title: '用户管理' }
+       meta: { title: '宠物健康护理预约与智能档案管理系统' }
      },
      {
        path: 'petServices',
@@ -92,7 +95,7 @@ const routes = [
         path: 'welcome',
         component: Welcome,
         meta: {
-          title: '数据统计'
+          title: '运营总览'
         }
       },
       {
@@ -138,13 +141,6 @@ const routes = [
         }
       },
       {
-        path: 'order',
-        component: Order,
-        meta: {
-          title: '健康记录录入'
-        }
-      },
-      {
         path: 'contactMessage',
         component: ContactMessage,
         meta: {
@@ -158,6 +154,34 @@ const routes = [
           title: '更改密码'
         }
       },
+    ]
+  },
+  {
+    path: '/vetHome',
+    name: '兽医页面',
+    component: VetHome,
+    redirect: '/vetHome/bookingList',
+    children: [
+      {
+        path: 'bookingList',
+        component: VetBooking,
+        meta: { title: '预约列表' }
+      },
+      {
+        path: 'healthRecord',
+        component: VetHealthRecord,
+        meta: { title: '健康记录' }
+      },
+      {
+        path: 'center',
+        component: VetCenter,
+        meta: { title: '个人中心' }
+      },
+      {
+        path: 'changePassword',
+        component: ChangePassword,
+        meta: { title: '更改密码' }
+      }
     ]
   }
 ]
@@ -176,22 +200,19 @@ VueRouter.prototype.push = function push(location) {
 
 //路由守卫
 router.beforeEach((to, from, next) => {
-  const pathArr = ['/adminHome', '/userHome']
+  const protectedPaths = ['/adminHome', '/userHome', '/vetHome']
   const token = localStorage.user
   const token2 = localStorage.admin
-  if (pathArr.indexOf(to.path) != -1) {
-    if (token || token2) {
+  const token3 = localStorage.vet
+  if (protectedPaths.some(path => to.path.indexOf(path) === 0)) {
+    if (token || token2 || token3) {
       next()
-    } else {
-      //解决重复路由报错 将错误抛出
-      router.push({
-        path: '/login'
-      }
-      ).catch(err => { })
+      return
     }
-  } else {
-    next()
+    next({ path: '/login' })
+    return
   }
+  next()
 })
 
 export default router

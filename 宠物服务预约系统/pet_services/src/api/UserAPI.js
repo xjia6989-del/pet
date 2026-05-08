@@ -93,3 +93,7 @@ export const submitContactMessage = function (data) {
 export const listMyContactMessages = function (userId) {
   return request.get('/user/contactMessage/list/' + userId).then(res => res.data.result)
 }
+
+export const deleteMyContactMessage = function (messageId, userId) {
+  return request.delete(`/user/contactMessage/delete/${messageId}/${userId}`).then(res => res.data.result)
+}

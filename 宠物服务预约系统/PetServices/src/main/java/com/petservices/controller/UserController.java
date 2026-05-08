@@ -56,6 +56,10 @@ public class UserController {
         System.out.println("查询到的用户: " + user);
         if (user != null) {
             session.setAttribute("userId", user.getUserId());
+            session.setAttribute("userRole", user.getRole());
+            if ("vet".equals(user.getRole())) {
+                session.setAttribute("vetId", user.getUserId());
+            }
             System.out.println("已将 userId=" + user.getUserId() + " 存入 session");
             System.out.println("session ID: " + session.getId());
         } else {
@@ -208,6 +212,15 @@ public class UserController {
     @GetMapping("/contactMessage/list/{userId}")
     public List<ContactMessage> listMyContactMessages(@PathVariable Integer userId) {
         return contactMessageService.listByUser(userId);
+    }
+
+    /**
+     * 用户删除自己的留言
+     */
+    @DeleteMapping("/contactMessage/delete/{messageId}/{userId}")
+    public Boolean deleteMyContactMessage(@PathVariable Integer messageId,
+                                          @PathVariable Integer userId) {
+        return contactMessageService.deleteByUser(messageId, userId);
     }
 
 }

@@ -1,11 +1,7 @@
 <template>
   <div id="box">
-
     <div class="card">
-
-      <div class="title">
-        宠物服务预约系统
-      </div>
+      <div class="title">宠物服务预约系统</div>
 
       <div class="wave-group" id="input1">
         <input required type="text" class="input" v-model="loginForm.username">
@@ -27,119 +23,92 @@
       </div>
 
       <div class="radio-button-container">
-        <div class="radio-button">
-          <input type="radio" class="radio-button__input" v-model="loginForm.role" id="radio1" name="radio-group"
-            value="user">
-          <label class="radio-button__label" for="radio1">
-            <span class="radio-button__custom"></span>
-            用户
-          </label>
-        </div>
-        <div class="radio-button">
-          <input type="radio" class="radio-button__input" v-model="loginForm.role" id="radio3" name="radio-group"
-            value="admin">
-          <label class="radio-button__label" for="radio3">
-            <span class="radio-button__custom"></span>
-            管理员
-          </label>
-        </div>
+        <el-radio-group v-model="loginForm.role" class="role-group">
+          <el-radio-button label="user">用户</el-radio-button>
+          <el-radio-button label="admin">管理员</el-radio-button>
+          <el-radio-button label="vet">兽医</el-radio-button>
+        </el-radio-group>
       </div>
-
 
       <button @click="login">登录</button>
       <div class="toRegister" @click="toRegister">没有账号？去注册</div>
-
-
-
     </div>
-
   </div>
 </template>
 
 <script>
 import { userLogin } from '@/api/UserAPI';
 import { adminLogin } from '@/api/AdminAPI';
+
 export default {
   name: 'CampusRecruitmentLogin',
-
   data() {
     return {
       loginForm: {
         username: '',
         password: '',
-        role: ''
+        role: 'user'
       }
     };
   },
-
-  mounted() {
-
-  },
-
   methods: {
     toRegister() {
-      this.$router.push('/register')
+      this.$router.push('/register');
+    },
+    normalizeResp(resp) {
+      return resp && resp.data ? resp.data : resp;
     },
     async login() {
-      let a = this.loginForm
-      if (a.username == '') {
-        this.$message.error("请输入用户名")
-        return;
+      const { username, password, role } = this.loginForm;
+      if (!username) return this.$message.error('请输入用户名');
+      if (!password) return this.$message.error('请输入密码');
+      if (!role) return this.$message.error('请选择角色');
+
+      try {
+        if (role === 'admin') {
+          const raw = await adminLogin(username, password);
+          const res = this.normalizeResp(raw);
+          if (res && res.success) {
+            localStorage.setItem('admin', JSON.stringify(res.result));
+            localStorage.removeItem('user');
+            localStorage.removeItem('vet');
+            localStorage.setItem('usertype', role);
+            this.$router.push('/adminHome');
+            return;
+          }
+          this.$message.error((res && res.msg) || '管理员登录失败');
+          return;
+        }
+
+        const raw = await userLogin(username, password);
+        const res = this.normalizeResp(raw);
+        if (res && res.success) {
+          if (role === 'vet') {
+            if (!res.result || res.result.role !== 'vet') {
+              this.$message.error('当前账号不是兽医角色');
+              return;
+            }
+            localStorage.setItem('vet', JSON.stringify(res.result));
+            localStorage.removeItem('user');
+            localStorage.removeItem('admin');
+            localStorage.setItem('usertype', role);
+            this.$router.push('/vetHome');
+            return;
+          }
+
+          localStorage.setItem('user', JSON.stringify(res.result));
+          localStorage.removeItem('admin');
+          localStorage.removeItem('vet');
+          localStorage.setItem('usertype', role);
+          this.$router.push('/userHome');
+          return;
+        }
+        this.$message.error((res && res.msg) || '登录失败，请重试');
+      } catch (error) {
+        this.$message.error('网络错误或服务器异常');
       }
-      if (a.password == '') {
-        this.$message.error("请输入密码")
-        return;
-      }
-      if (a.role == '') {
-        this.$message.error("请选择角色")
-        return;
-      }
-      //用户登录
-      //用户登录
-     //用户登录
-    //用户登录
-   //用户登录
-   if (a.role == 'user') {
-     try {
-       let response = await userLogin(this.loginForm.username, this.loginForm.password);
-       let res = response.data;   // 取出后端返回的 JSON
-       console.log('登录响应:', res);
-       if (res && res.success) {
-         console.log('登录成功，准备跳转');
-         localStorage.setItem("user", JSON.stringify(res.result));
-         localStorage.setItem("usertype", a.role);
-         this.$router.push('/userHome');
-         console.log('跳转指令已发出');
-         return;
-       } else {
-         this.$message.error(res ? res.msg : '登录失败，请重试');
-       }
-     } catch (error) {
-       console.error('登录出错', error);
-       this.$message.error('网络错误或服务器异常');
-     }
-   }
-      //管理员
-     //管理员
-     if (a.role == 'admin') {
-       try {
-         const response = await adminLogin(this.loginForm.username, this.loginForm.password);
-         const res = response.data;
-         if (res && res.success) {
-           localStorage.setItem("admin", JSON.stringify(res.result));
-           localStorage.setItem("usertype", a.role);
-           this.$router.push('/adminHome');
-           return;
-         } else {
-           this.$message.error(res ? res.msg : '登录失败，请重试');
-         }
-       } catch (error) {
-         console.error('管理员登录出错', error);
-         this.$message.error('网络错误或服务器异常');
-       }
-     }
     }
-  },
+  }
 };
 </script>
 <style scoped>
@@ -257,107 +226,52 @@ export default {
   width: 50%;
 }
 .radio-button-container {
-  width: 30%;
+  width: 420px;
   display: flex;
-  align-items: center;
-  justify-content: space-around;
-  gap: 24px;
+  justify-content: center;
   position: absolute;
-  top: 340px;
-  left: 220px;
+  top: 350px;
+  left: 175px;
 }
 
-.radio-button {
-  display: inline-block;
-  position: relative;
-  cursor: pointer;
+.role-group {
+  display: flex;
+  gap: 12px;
 }
 
-.radio-button__input {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
+.role-group /deep/ .el-radio-button__inner {
+  border: 1px solid #F37C57;
+  color: #F37C57;
+  background: transparent;
+  box-shadow: none;
 }
 
-.radio-button__label {
-  display: inline-block;
-  padding-left: 30px;
-  margin-bottom: 10px;
-  position: relative;
-  font-size: 15px;
-  color: #201e1e;
-  font-weight: 600;
-  cursor: pointer;
-  text-transform: uppercase;
-  transition: all 0.3s ease;
-}
-
-.radio-button__custom {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 2px solid #555;
-  transition: all 0.3s ease;
-}
-
-.radio-button__input:checked+.radio-button__label .radio-button__custom {
-  background-color: #F37C57;
-  border-color: transparent;
-  transform: scale(0.8);
-  box-shadow: 0 0 20px #F37C57;
-}
-
-.radio-button__label:hover .radio-button__custom {
-  transform: scale(1.2);
+.role-group /deep/ .el-radio-button__orig-radio:checked + .el-radio-button__inner {
+  background: #F37C57;
   border-color: #F37C57;
-  box-shadow: 0 0 20px #F37C57;
-}
-
-button {
-  width: 200px;
-  height: 50px;
-  border-radius: 50px;
-  cursor: pointer;
-  border: 0;
-  background-color: white;
-  box-shadow: rgb(0 0 0 / 5%) 0 0 8px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  font-size: 15px;
-  transition: all 0.5s ease;
-  position: absolute;
-  top: 420px;
-  left: 225px;
-  font-weight: 600;
-  font-size: 17px;
-  letter-spacing: 15px;
-  text-align: center;
+  color: #fff;
+  box-shadow: none;
 }
 
 .toRegister {
   position: absolute;
-  top: 490px;
-  left: 255px;
-  font-weight: 600;
-  font-size: 17px;
+  top: 460px;
+  left: 175px;
   cursor: pointer;
-  color: #6b6969;
+  color: #f37c57;
 }
 
-button:hover {
-  background-color: #F37C57;
-  color: hsl(0, 0%, 100%);
-  box-shadow: rgb(243, 124, 87) 0px 7px 29px 0px;
-}
-
-button:active {
-  background-color: #F37C57;
-  color: hsl(0, 0%, 100%);
-  box-shadow: rgb(243, 124, 87) 0px 0px 0px 0px;
-  transition: 100ms;
+button {
+  position: absolute;
+  top: 400px;
+  left: 175px;
+  width: 300px;
+  height: 40px;
+  border: none;
+  border-radius: 20px;
+  background: #f37c57;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
 }
 </style>

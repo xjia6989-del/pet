@@ -17,7 +17,9 @@
       <el-table :data="displayBookings" border style="width: 100%">
         <el-table-column prop="bookingId" label="预约编号" width="100" />
         <el-table-column prop="serveName" label="服务项目" />
-        <el-table-column prop="bookingDate" label="预约时间" width="180" />
+        <el-table-column prop="bookingDate" label="预约时间" width="180">
+          <template slot-scope="scope">{{ formatDate(scope.row.bookingDate) }}</template>
+        </el-table-column>
         <el-table-column prop="flag" label="状态" width="140">
           <template slot-scope="scope">
             <el-tag v-if="scope.row.flag === 1" type="warning">待处理</el-tag>
@@ -68,7 +70,8 @@ export default {
         star: 0
       },
       updateVisible: false,
-      formLabelWidth: '120px'
+      formLabelWidth: '120px',
+      currentUserId: null
     };
   },
   computed: {
@@ -80,9 +83,19 @@ export default {
     }
   },
   methods: {
+    formatDate(value) {
+      if (!value) return '';
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return String(value).slice(0, 10);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    },
     async fetchBookings() {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const userId = user.userId;
+      this.currentUserId = userId || null;
       if (!userId) {
         this.$message.warning('登录状态已失效，请重新登录');
         this.$router.push('/login');

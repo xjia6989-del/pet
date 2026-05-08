@@ -20,11 +20,13 @@ public class HealthRecord implements Serializable {
     private Integer petId;
     private Integer bookingId;
     private String recordType;
+    private String recordTag;
     private Date recordDate;
     private String description;
     private String diagnosis;
     private String prescription;
     private Date nextDate;
+    private Integer reminderStatus;
     private Integer createdBy;
     private Date createTime;
 }

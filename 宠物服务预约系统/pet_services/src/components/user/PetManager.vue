@@ -5,7 +5,10 @@
         <h2>宠物档案管理</h2>
         <p>记录宠物基础信息、疫苗记录与病史，并查看近期健康提醒</p>
       </div>
-      <el-button type="primary" round icon="el-icon-plus" @click="showAddDialog = true">添加宠物</el-button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <el-button type="primary" round icon="el-icon-plus" @click="showAddDialog = true">添加宠物</el-button>
+        <el-button round icon="el-icon-camera" @click="showAddDialog = true">拍照识别建档</el-button>
+      </div>
     </div>
 
     <el-card class="panel-card" shadow="hover">
@@ -28,7 +31,28 @@
 
     <el-card class="panel-card" shadow="hover" style="margin-top:12px;">
       <el-table :data="petList" style="width: 100%" border>
-        <el-table-column prop="petName" label="昵称"></el-table-column>
+        <el-table-column type="index" label="序号" width="70"></el-table-column>
+        <el-table-column prop="petId" label="档案ID" width="90"></el-table-column>
+        <el-table-column label="图片" width="110">
+          <template slot-scope="scope">
+            <el-image
+              v-if="scope.row.avatar"
+              :src="scope.row.avatar"
+              fit="cover"
+              style="width:48px;height:48px;border-radius:8px;border:1px solid #ebeef5;"
+              :preview-src-list="[scope.row.avatar]">
+            </el-image>
+            <el-tag v-else size="mini" type="info">无图片</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="昵称" min-width="180">
+          <template slot-scope="scope">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span>{{ scope.row.petName }}</span>
+              <el-tag size="mini" type="info">#{{ scope.row.petId }}</el-tag>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="species" label="物种"></el-table-column>
         <el-table-column prop="breed" label="品种"></el-table-column>
         <el-table-column prop="age" label="年龄" width="80"></el-table-column>
@@ -50,10 +74,8 @@
           <el-input v-model="petForm.petName"></el-input>
         </el-form-item>
         <el-form-item label="物种">
-          <el-select v-model="petForm.species">
-            <el-option label="狗" value="狗"></el-option>
-            <el-option label="猫" value="猫"></el-option>
-            <el-option label="其他" value="其他"></el-option>
+          <el-select v-model="petForm.species" filterable placeholder="请选择物种">
+            <el-option v-for="item in speciesOptions" :key="item" :label="item" :value="item"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="品种">
@@ -61,6 +83,16 @@
         </el-form-item>
         <el-form-item label="年龄">
           <el-input-number v-model="petForm.age" :min="0" :max="60"></el-input-number>
+          <span v-if="petForm.aiAgeEstimate" style="margin-left:10px;color:#909399;font-size:12px;">AI预估：{{ petForm.aiAgeEstimate }}</span>
+        </el-form-item>
+        <el-form-item label="AI毛色">
+          <el-input v-model="petForm.aiColor" placeholder="智能识别后自动填写"></el-input>
+        </el-form-item>
+        <el-form-item label="AI体型">
+          <el-input v-model="petForm.aiSize" placeholder="智能识别后自动填写"></el-input>
+        </el-form-item>
+        <el-form-item label="AI性格">
+          <el-input type="textarea" :rows="3" v-model="petForm.aiPersonality" placeholder="智能生成性格侧写"></el-input>
         </el-form-item>
         <el-form-item label="疫苗记录">
           <el-input type="textarea" :rows="3" v-model="petForm.vaccineRecord"></el-input>
@@ -80,15 +112,21 @@
             <el-radio :label="2">女</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="头像">
+        <el-form-item label="头像/拍照">
           <el-upload
             action="http://localhost:9999/upload"
             :show-file-list="false"
             :on-success="handleAvatarSuccess"
-            :before-upload="beforeAvatarUpload">
-            <el-button size="small">上传图片</el-button>
+            :before-upload="beforeAvatarUpload"
+            :on-change="handleImageChange">
+            <el-button size="small" icon="el-icon-upload">上传/拍照选择</el-button>
           </el-upload>
-          <img v-if="petForm.avatar" :src="petForm.avatar" width="100" style="margin-top:10px; border-radius:8px;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;">
+            <img v-if="petForm.avatar" :src="petForm.avatar" width="100" style="border-radius:8px;">
+            <el-button size="small" type="success" icon="el-icon-camera" :loading="visionLoading" @click="recognizeVision">AI识别并回填</el-button>
+          </div>
+          <el-alert v-if="visionResultText" :title="visionResultText" type="success" show-icon :closable="false" style="margin-top:8px;"></el-alert>
+          <div v-if="visionTip" style="margin-top:8px;color:#67c23a;font-size:12px;">{{ visionTip }}</div>
         </el-form-item>
       </el-form>
       <div slot="footer">
@@ -100,15 +138,22 @@
 </template>
 
 <script>
-import { getPetList, addPet, updatePet, deletePet, getHealthReminders } from '@/api/PetAPI';
+import { getPetList, addPet, updatePet, deletePet, getHealthReminders, recognizePetVision } from '@/api/PetAPI';
 
 export default {
   data() {
     return {
       petList: [],
       healthReminders: [],
+      speciesOptions: [
+        '狗', '猫', '兔', '仓鼠', '龙猫', '豚鼠', '雪貂', '鹦鹉', '金丝雀', '乌龟', '蜥蜴', '蛇', '其他'
+      ],
       showAddDialog: false,
       dialogTitle: '添加宠物',
+      visionLoading: false,
+      visionResultText: '',
+      visionTip: '',
+      visionFile: null,
       petForm: {
         petId: null,
         petName: '',
@@ -120,7 +165,17 @@ export default {
         birthDate: '',
         weight: null,
         gender: 1,
-        avatar: ''
+        avatar: '',
+        aiBreed: '',
+        aiColor: '',
+        aiSize: '',
+        aiAgeEstimate: '',
+        aiPersonality: '',
+        aiBreed: '',
+        aiColor: '',
+        aiSize: '',
+        aiAgeEstimate: '',
+        aiPersonality: ''
       }
     };
   },
@@ -187,6 +242,14 @@ export default {
       }).catch(() => {});
     },
     submitPet() {
+      if (!this.petForm.petName || !this.petForm.petName.trim()) {
+        this.$message.warning('请填写宠物昵称');
+        return;
+      }
+      if (!this.petForm.species) {
+        this.$message.warning('请选择宠物物种');
+        return;
+      }
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const userId = user.userId;
       if (!userId) {
@@ -208,17 +271,68 @@ export default {
       });
     },
     handleAvatarSuccess(res) {
-      this.petForm.avatar = res.url;
+      // 后端 /upload 接口返回的是图片URL字符串（不是 { url: ... } 对象）
+      this.petForm.avatar = typeof res === 'string' ? res : (res && res.url ? res.url : '');
+      if (!this.petForm.avatar) {
+        this.$message.error('图片上传返回异常，请重试');
+      }
     },
+    handleImageChange(file) {
+      this.visionFile = file && file.raw ? file.raw : null;
+      this.visionTip = this.visionFile ? '已选择图片，可点击智能识别' : '';
+    },
+    async recognizeVision() {
+      if (!this.visionFile) {
+        this.$message.warning('请先上传宠物图片');
+        return;
+      }
+      this.visionLoading = true;
+      this.visionResultText = '正在识别中...';
+      try {
+        const formData = new FormData();
+        formData.append('file', this.visionFile);
+        const result = await recognizePetVision(formData);
+        if (result && typeof result === 'object') {
+          this.petForm.species = result.species || this.petForm.species;
+          this.petForm.breed = result.breed || this.petForm.breed;
+          this.petForm.aiBreed = result.breed || this.petForm.aiBreed;
+          this.petForm.aiColor = result.color || this.petForm.aiColor;
+          this.petForm.aiSize = result.size || this.petForm.aiSize;
+          this.petForm.aiAgeEstimate = result.ageEstimate || this.petForm.aiAgeEstimate;
+          this.petForm.aiPersonality = result.personalitySummary || this.petForm.aiPersonality;
+          if (result.age) {
+            this.petForm.age = result.age;
+          } else if (result.ageEstimate) {
+            const ageMap = { '幼年': 1, '成年': 3, '老年': 8 };
+            this.petForm.age = ageMap[result.ageEstimate] || this.petForm.age;
+          }
+          if (result.color && !this.petForm.medicalHistory) {
+            this.petForm.medicalHistory = `毛色：${result.color}；体型：${result.size || '需人工确认'}`;
+          }
+          this.visionResultText = `识别完成：${result.breed || '未知品种'}，${result.color || '未知毛色'}，${result.ageEstimate || '未知年龄阶段'}`;
+          this.visionTip = `来源：${result.source || 'AI识别'}；置信度：${result.confidence != null ? result.confidence : '未知'}`;
+          this.$message.success('识别成功，已回填表单');
+        } else {
+          this.visionResultText = '未获取到识别结果';
+          this.$message.warning('识别结果为空');
+        }
+      } catch (e) {
+        this.visionResultText = '识别失败，请稍后重试';
+        this.$message.error('识别失败，请稍后重试');
+      } finally {
+        this.visionLoading = false;
+      }
+    },
+
     beforeAvatarUpload(file) {
       const isJPG = file.type === 'image/jpeg' || file.type === 'image/png';
       if (!isJPG) {
         this.$message.error('只能上传 JPG/PNG 图片');
         return false;
       }
-      const isLt2M = file.size / 1024 / 1024 < 2;
-      if (!isLt2M) {
-        this.$message.error('图片大小不能超过 2MB');
+      const isLt5M = file.size / 1024 / 1024 < 5;
+      if (!isLt5M) {
+        this.$message.error('图片大小不能超过 5MB');
         return false;
       }
       return true;
@@ -237,6 +351,9 @@ export default {
         gender: 1,
         avatar: ''
       };
+      this.visionFile = null;
+      this.visionResultText = '';
+      this.visionTip = '';
       this.dialogTitle = '添加宠物';
     },
     viewHealth(petId, petName) {

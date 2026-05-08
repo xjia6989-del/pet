@@ -2,12 +2,14 @@ package com.petservices.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.petservices.dto.HealthReminderDto;
+import com.petservices.dto.PetVisionRecognitionDto;
 import com.petservices.entity.HealthRecord;
 import com.petservices.entity.Pet;
 import com.petservices.service.HealthReminderPipelineService;
 import com.petservices.service.IHealthRecordService;
 import com.petservices.service.IPetService;
 import com.petservices.service.UserService;
+import com.petservices.service.PetVisionRecognitionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,6 +32,8 @@ public class PetController {
     private HealthReminderPipelineService healthReminderPipelineService;
     @Autowired
     private IHealthRecordService healthRecordService;
+    @Autowired
+    private PetVisionRecognitionService petVisionRecognitionService;
 
     /**
      * 获取当前登录用户的宠物列表
@@ -43,7 +47,7 @@ public class PetController {
         }
         return petService.list(new QueryWrapper<Pet>()
                 .eq("userId", currentUserId)
-                .orderByDesc("createTime"));
+                .orderByAsc("petId"));
     }
 
     /**
@@ -51,7 +55,16 @@ public class PetController {
      */
     @GetMapping("/all")
     public List<Pet> all() {
-        return petService.list(new QueryWrapper<Pet>().orderByDesc("createTime"));
+        List<Pet> pets = petService.list(new QueryWrapper<Pet>().orderByAsc("petId"));
+        for (Pet pet : pets) {
+            pet.setFocusLevel(resolveFocusLevel(pet.getPetId()));
+        }
+        pets.sort((a, b) -> {
+            int focusDiff = Integer.compare(b.getFocusLevel() == null ? 0 : b.getFocusLevel(), a.getFocusLevel() == null ? 0 : a.getFocusLevel());
+            if (focusDiff != 0) return focusDiff;
+            return Integer.compare(a.getPetId() == null ? 0 : a.getPetId(), b.getPetId() == null ? 0 : b.getPetId());
+        });
+        return pets;
     }
 
 
@@ -68,8 +81,17 @@ public class PetController {
         }
         pet.setUserId(currentUserId);
         pet.setCreateTime(new Date());
+        pet.setStatus(1);
         boolean saved = petService.save(pet);
         return saved ? pet : null;
+    }
+
+    /**
+     * 智能识别宠物图片信息（百度智能云宠物/动物识别 + 本地性格侧写）
+     */
+    @PostMapping("/vision/recognize")
+    public PetVisionRecognitionDto recognizePetVision(@RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        return petVisionRecognitionService.recognize(file);
     }
 
     /**
@@ -94,7 +116,7 @@ public class PetController {
     }
 
     /**
-     * 删除宠物
+     * 删除宠物（用户）
      */
     @DeleteMapping("/delete/{petId}")
     public Boolean delete(@PathVariable Integer petId,
@@ -109,6 +131,32 @@ public class PetController {
             return false;
         }
         return petService.removeById(petId);
+    }
+
+    /**
+     * 停用宠物（管理员）
+     */
+    @DeleteMapping("/admin/delete/{petId}")
+    public Boolean disableByAdmin(@PathVariable Integer petId,
+                                  @RequestParam(value = "adminId", required = false) Integer adminId,
+                                  HttpSession session) {
+        Integer currentAdminId = adminId;
+        if (currentAdminId == null) {
+            Object sessionAdminId = session.getAttribute("adminId");
+            if (sessionAdminId instanceof Integer) {
+                currentAdminId = (Integer) sessionAdminId;
+            }
+        }
+        if (currentAdminId == null) {
+            return false;
+        }
+
+        Pet pet = petService.getById(petId);
+        if (pet == null) {
+            return false;
+        }
+        pet.setStatus(0);
+        return petService.updateById(pet);
     }
 
     /**
@@ -129,7 +177,6 @@ public class PetController {
         SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd");
 
         for (Pet pet : pets) {
-            // 1) 真实记录来源：管理员录入健康档案的 nextDate
             List<HealthRecord> healthRecords = healthRecordService.list(new QueryWrapper<HealthRecord>()
                     .eq("petId", pet.getPetId())
                     .isNotNull("nextDate")
@@ -149,12 +196,12 @@ public class PetController {
                             fmt.format(r.getNextDate()),
                             mode,
                             level,
-                            "healthRecord"
+                            "healthRecord",
+                            r.getRecordTag()
                     ));
                 }
             }
 
-            // 2) 若无健康档案提醒，回退系统周期估算
             if (healthRecords == null || healthRecords.isEmpty()) {
                 Date baseDate = pet.getBirthDate() != null ? pet.getBirthDate() : pet.getCreateTime();
                 if (baseDate == null) {
@@ -173,7 +220,8 @@ public class PetController {
                             fmt.format(vaccineDue),
                             mode,
                             "upcoming",
-                            "system"
+                            "system",
+                            "vaccine"
                     ));
                 }
 
@@ -187,7 +235,8 @@ public class PetController {
                             fmt.format(dewormDue),
                             mode,
                             "upcoming",
-                            "system"
+                            "system",
+                            "deworm"
                     ));
                 }
 
@@ -201,7 +250,8 @@ public class PetController {
                             fmt.format(checkupDue),
                             mode,
                             "upcoming",
-                            "system"
+                            "system",
+                            "checkup"
                     ));
                 }
             }
@@ -223,6 +273,20 @@ public class PetController {
             return "upcoming";
         }
         return "normal";
+    }
+
+    private Integer resolveFocusLevel(Integer petId) {
+        if (petId == null) {
+            return 0;
+        }
+        Pet pet = petService.getById(petId);
+        if (pet == null) {
+            return 0;
+        }
+        if (pet.getFocusLevel() != null) {
+            return pet.getFocusLevel();
+        }
+        return 0;
     }
 
     private Integer resolveUserId(Integer userId, HttpSession session) {

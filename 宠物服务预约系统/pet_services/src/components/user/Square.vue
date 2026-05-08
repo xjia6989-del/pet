@@ -4,8 +4,8 @@
       <div class="hero-overlay"></div>
       <div class="hero-content">
         <div class="hero-badge">🐾 萌宠乐园</div>
-        <h1 class="hero-title">欢迎来到萌宠广场</h1>
-        <p class="hero-description">在这里，您可以预约宠物服务、记录宠物成长，还能随时查看健康提醒与预约进度。</p>
+        <h1 class="hero-title">欢迎来到宠物健康护理中心</h1>
+        <p class="hero-description">在这里，您可以预约体检、疫苗与康复等护理服务，记录宠物成长并持续关注健康状态。</p>
         <div class="hero-actions">
           <el-button type="primary" round @click="$router.push('/userHome/petServices')">立即预约</el-button>
           <el-button round @click="$router.push('/userHome/myInfo')">进入个人中心</el-button>
@@ -39,8 +39,8 @@
 
     <section class="services panel">
       <div class="section-head">
-        <h2 class="section-title">热门宠物服务</h2>
-        <span class="section-sub">精选服务，给毛孩子更好的照顾</span>
+        <h2 class="section-title">热门健康护理</h2>
+        <span class="section-sub">精选护理项目，守护毛孩子健康</span>
       </div>
       <div class="service-cards">
         <div

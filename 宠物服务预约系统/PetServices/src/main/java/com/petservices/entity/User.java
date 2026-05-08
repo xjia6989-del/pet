@@ -67,6 +67,11 @@ public class User implements Serializable {
     private Integer sex;
 
     /**
+     * 角色：user 普通用户 / vet 兽医
+     */
+    private String role;
+
+    /**
      * 健康提醒订阅开关：0未订阅，1已订阅
      */
     private Integer healthReminderSubscribed;

@@ -4,14 +4,14 @@ export const getAllBooking = (currentPage, pageSize) => {
     return request({
         url: `/booking/getBookingList/${currentPage}/${pageSize}`,
         method: 'get'
-    }).then(res => res.data.result);
+    }).then(res => res.data.result || res.data);
 };
 
 export const updateBookingFlag = (bookingId, flag) => {
     return request({
         url: `/booking/updateBookingFlag/${bookingId}/${flag}`,
         method: 'get'
-    }).then(res => res.data.result);
+    }).then(res => res.data.result || res.data);
 };
 
 export const addBooking = (data) => {
@@ -19,20 +19,28 @@ export const addBooking = (data) => {
         url: '/booking/addBooking',
         method: 'post',
         data
-    }).then(res => res.data.result);
+    }).then(res => res.data.result || res.data);
 };
 
 export const deleteBooking = (bookingId) => {
     return request({
         url: `/booking/deleteBooking/${bookingId}`,
         method: 'get'
-    }).then(res => res.data.result);
+    }).then(res => res.data.result || res.data);
 };
 
 export const searchBooking = (flag) => {
     return request({
         url: `/booking/searchBooking/${flag}`,
         method: 'get'
+    }).then(res => res.data.result || res.data);
+};
+
+export const searchBookingByPet = (petName) => {
+    return request({
+        url: '/booking/searchBookingByPet',
+        method: 'get',
+        params: { petName }
     }).then(res => res.data.result);
 };
 
@@ -56,7 +64,23 @@ export const getAvailableSlots = (serveId, date) => {
         url: '/booking/availableSlots',
         method: 'get',
         params: { serveId, date }
-    }).then(res => res.data.result);
+    }).then(res => res.data.result || res.data);
+};
+
+export const getSlotConfig = (serveId, date) => {
+    return request({
+        url: '/booking/slotConfig',
+        method: 'get',
+        params: { serveId, date }
+    }).then(res => res.data.result || res.data);
+};
+
+export const saveSlotConfig = (data) => {
+    return request({
+        url: '/booking/slotConfig',
+        method: 'post',
+        data
+    }).then(res => res.data.result ?? res.data);
 };
 
 export const cancelBooking = (bookingId, userId) => {
@@ -65,4 +89,18 @@ export const cancelBooking = (bookingId, userId) => {
         method: 'post',
         params: { userId }
     }).then(res => res.data.result);
+};
+
+export const assignVet = (bookingId, vetId) => {
+    return request({
+        url: `/booking/assignVet/${bookingId}/${vetId}`,
+        method: 'get'
+    }).then(res => res.data.result ?? res.data);
+};
+
+export const getVetBooking = (vetId) => {
+    return request({
+        url: `/booking/getVetBooking/${vetId}`,
+        method: 'get'
+    }).then(res => res.data.result || res.data);
 };

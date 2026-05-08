@@ -16,6 +16,7 @@ public class HealthReminderDto {
     private String mode; // display/subscribe
     private String level; // overdue/upcoming/normal
     private String source; // healthRecord/system
+    private String tag; // vaccine/deworm/checkup/followup/other
 
     // 兼容旧代码调用（6参数）
     public HealthReminderDto(Integer petId,

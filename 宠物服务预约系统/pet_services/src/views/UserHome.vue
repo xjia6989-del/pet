@@ -2,8 +2,8 @@
   <div class="user-layout">
     <el-header class="header-container">
       <div class="header-left">
-        <span class="system-title">宠物服务预约系统</span>
-        <span class="system-subtitle">Pet Care & Booking</span>
+        <span class="system-title">宠物健康护理预约与智能档案管理系统</span>
+        <span class="system-subtitle">Pet Health Care</span>
       </div>
 
       <el-menu

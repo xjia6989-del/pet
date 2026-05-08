@@ -161,12 +161,21 @@ public class UserService {
         UserFriendlyException.throwException(StringUtils.isBlank(user.getName()), "姓名不能为空!");
         UserFriendlyException.throwException(StringUtils.isBlank(user.getPhone()), "电话不能为空!");
         UserFriendlyException.throwException(StringUtils.isBlank(user.getAddress()), "地址不能为空!");
-        UserFriendlyException.throwException(user.getSex() == null, "性别不能为空!");
+
+        // 注册页不再要求选择性别，统一给一个默认值，避免数据库非空约束报错
+        if (user.getSex() == null) {
+            user.setSex(1);
+        }
 
         // 注册页暂未填写年龄时，给一个默认值，避免数据库非空约束报错
         if (user.getAge() == null) {
             user.setAge(18);
         }
+
+        if (user.getRole() == null || user.getRole().trim().isEmpty()) {
+            user.setRole("user");
+        }
+        UserFriendlyException.throwException(!"user".equals(user.getRole()) && !"vet".equals(user.getRole()), "角色类型不正确!");
 
         //验证用户名密码
         UserFriendlyException.throwException(ruleStr(user.getUsername()), "用户名长度不能小于4!");
@@ -186,6 +195,9 @@ public class UserService {
         // 一些数据库使用 tinyint(1) + 非空约束，注册时默认置 0 更稳妥
         if (user.getHealthReminderSubscribed() == null) {
             user.setHealthReminderSubscribed(0);
+        }
+        if (StringUtils.isBlank(user.getRole())) {
+            user.setRole("user");
         }
 
         userMapper.insert(user);

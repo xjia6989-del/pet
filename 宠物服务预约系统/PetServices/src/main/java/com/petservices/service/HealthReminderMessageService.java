@@ -52,6 +52,13 @@ public class HealthReminderMessageService {
         }
     }
 
+    public void purgeExpiredPendingMessages() {
+        QueryWrapper<HealthReminderMessage> q = new QueryWrapper<>();
+        q.eq("status", 0)
+                .lt("dueDate", new java.text.SimpleDateFormat("yyyy-MM-dd").format(new Date()));
+        messageMapper.delete(q);
+    }
+
     public int sendPendingForUser(Integer userId) {
         QueryWrapper<HealthReminderMessage> q = new QueryWrapper<>();
         q.eq("userId", userId)
@@ -85,6 +92,19 @@ public class HealthReminderMessageService {
         return messageMapper.selectList(q);
     }
 
+    public List<Integer> getSubscribedUserIds() {
+        QueryWrapper<HealthReminderMessage> q = new QueryWrapper<>();
+        q.select("distinct userId");
+        List<HealthReminderMessage> rows = messageMapper.selectList(q);
+        List<Integer> userIds = new ArrayList<>();
+        for (HealthReminderMessage row : rows) {
+            if (row != null && row.getUserId() != null && !userIds.contains(row.getUserId())) {
+                userIds.add(row.getUserId());
+            }
+        }
+        return userIds;
+    }
+
     public void sendPendingForAllSubscribedUsers(List<Integer> userIds) {
         if (userIds == null || userIds.isEmpty()) {
             return;
@@ -105,7 +125,8 @@ public class HealthReminderMessageService {
                     msg.getDueDate(),
                     msg.getStatus() != null && msg.getStatus() == 1 ? "subscribe" : "display",
                     "upcoming",
-                    "healthRecord"
+                    "healthRecord",
+                    "other"
             ));
         }
         return list;

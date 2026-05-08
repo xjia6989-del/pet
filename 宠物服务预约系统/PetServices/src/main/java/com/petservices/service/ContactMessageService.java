@@ -34,4 +34,15 @@ public class ContactMessageService {
         q.eq("userId", userId).orderByDesc("createTime");
         return contactMessageMapper.selectList(q);
     }
+
+    public boolean deleteByUser(Integer messageId, Integer userId) {
+        if (messageId == null || userId == null) {
+            return false;
+        }
+        ContactMessage msg = contactMessageMapper.selectById(messageId);
+        if (msg == null || msg.getUserId() == null || !msg.getUserId().equals(userId)) {
+            return false;
+        }
+        return contactMessageMapper.deleteById(messageId) > 0;
+    }
 }

@@ -10,29 +10,29 @@
         <div class="box2">预约总数</div>
       </div>
       <div class="box box-c">
-        <div class="box1">{{ chartsInfo.orderTotal }}</div>
-        <div class="box2">订单总数</div>
+        <div class="box1">{{ chartsInfo.petTotal }}</div>
+        <div class="box2">宠物档案数</div>
       </div>
       <div class="box box-d">
-        <div class="box1">{{ chartsInfo.serveTotal }}</div>
-        <div class="box2">服务总数</div>
+        <div class="box1">{{ chartsInfo.pendingContactTotal }}</div>
+        <div class="box2">待处理留言数</div>
       </div>
     </div>
 
     <div class="mid">
       <div class="chart-container1 panel">
-        <h2>各类型服务数量</h2>
+        <h2>各类型护理项目数量</h2>
         <div ref="salesChart" class="chart"></div>
       </div>
 
       <div class="chart-container2 panel">
-        <h2>服务与订单</h2>
+        <h2>核心业务总览</h2>
         <div ref="transactionChart" class="chart"></div>
       </div>
     </div>
 
     <div class="chart-container3 panel">
-      <h2 class="title-activity">平台人员活跃度</h2>
+      <h2 class="title-activity">平台运营活跃度</h2>
       <div ref="userChart" class="chart"></div>
     </div>
   </div>
@@ -55,8 +55,7 @@ export default {
       dateList3: '',
       numberList3: '',
       activityData: [],
-      bookingTotal: 0,
-      orderTotal: 0
+      bookingTotal: 0
     };
   },
   methods: {
@@ -134,7 +133,7 @@ export default {
         tooltip: { trigger: 'axis', formatter: '{b}<br/>{a}: {c}' },
         xAxis: {
           type: 'category',
-          data: ['总订单数', '总预约数'],
+          data: ['预约总数', '护理项目总数', '宠物档案数', '健康记录数'],
           axisLabel: { color: '#667a9f', fontSize: 14 }
         },
         yAxis: { type: 'value', axisLine: { show: false } },
@@ -142,7 +141,12 @@ export default {
           {
             name: '数量',
             type: 'bar',
-            data: [this.orderTotal, this.bookingTotal],
+            data: [
+              this.bookingTotal,
+              this.chartsInfo.serveTotal || 0,
+              this.chartsInfo.petTotal || 0,
+              this.chartsInfo.healthRecordTotal || 0
+            ],
             barWidth: '40%',
             itemStyle: {
               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -168,12 +172,14 @@ export default {
       data = {
         totalPeople: 12,
         bookingTotal: 8,
-        orderTotal: 5,
         serveTotal: 6,
+        petTotal: 15,
+        healthRecordTotal: 22,
         serveList: [
-          { categoryName: '洗护', count: 3 },
-          { categoryName: '医疗', count: 2 },
-          { categoryName: '美容', count: 1 }
+          { categoryName: '健康体检', count: 2 },
+          { categoryName: '免疫防护', count: 2 },
+          { categoryName: '日常护理', count: 1 },
+          { categoryName: '康复护理', count: 1 }
         ],
         loginChartsList: [
           { loginDate: '周一', userLogin: 5, adminLogin: 2 },
@@ -185,7 +191,6 @@ export default {
       }
     }
     this.chartsInfo = data
-    this.orderTotal = data.orderTotal || 0
     this.bookingTotal = data.bookingTotal || 0
     this.declaredChartsInfo = data.declaredChartsInfo || []
     this.activityData = Array.isArray(data.serveList)
